@@ -1,60 +1,66 @@
 import os
-import uuid
-import asyncio
 from typing import Tuple
+import uuid
 from fastapi import HTTPException
 from langdetect import detect
 import edge_tts
-from .models import VoiceType
+import asyncio
+from .models import SpeakerVoice
 
-class TextToSpeech:
+class SpeechGenerator:
     def __init__(self):
-        self.output_dir = "audio_files"
-        os.makedirs(self.output_dir, exist_ok=True)
+        self.storage = "audio_files"
+        if not os.path.exists(self.storage):
+            os.makedirs(self.storage)
 
-    async def detect_language(self, text: str) -> str:
+    async def get_language(self, message: str) -> str:
         try:
             loop = asyncio.get_event_loop()
-            return await loop.run_in_executor(None, detect, text)
+            lang = await loop.run_in_executor(None, detect, message)
+            return lang
         except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Language detection failed: {str(e)}")
+            raise HTTPException(status_code=400, detail=str(e))
 
-    def get_voice(self, lang_code: str, voice_type: VoiceType) -> str:
+    def select_voice(self, language: str, speaker: SpeakerVoice) -> str:
         voices = {
             'bn': {
-                VoiceType.MALE: 'bn-IN-BashkarNeural',
-                VoiceType.FEMALE: 'bn-IN-TanishaaNeural',
-                VoiceType.ROBOTIC: 'bn-IN-BashkarNeural',
-                VoiceType.NEUTRAL: 'bn-IN-TanishaaNeural'
+                SpeakerVoice.MALE: 'bn-IN-BashkarNeural',
+                SpeakerVoice.FEMALE: 'bn-IN-TanishaaNeural',
+                SpeakerVoice.ROBOTIC: 'bn-IN-BashkarNeural',
+                SpeakerVoice.NEUTRAL: 'bn-IN-TanishaaNeural'
             },
             'en': {
-                VoiceType.MALE: 'en-US-ChristopherNeural',
-                VoiceType.FEMALE: 'en-US-JennyNeural',
-                VoiceType.ROBOTIC: 'en-US-RogerNeural',
-                VoiceType.NEUTRAL: 'en-US-AriaNeural'
+                SpeakerVoice.MALE: 'en-US-ChristopherNeural',
+                SpeakerVoice.FEMALE: 'en-US-JennyNeural',
+                SpeakerVoice.ROBOTIC: 'en-US-RogerNeural',
+                SpeakerVoice.NEUTRAL: 'en-US-AriaNeural'
             },
             'hi': {
-                VoiceType.MALE: 'hi-IN-MadhurNeural',
-                VoiceType.FEMALE: 'hi-IN-SwaraNeural',
-                VoiceType.ROBOTIC: 'hi-IN-MadhurNeural',
-                VoiceType.NEUTRAL: 'hi-IN-SwaraNeural'
+                SpeakerVoice.MALE: 'hi-IN-MadhurNeural',
+                SpeakerVoice.FEMALE: 'hi-IN-SwaraNeural',
+                SpeakerVoice.ROBOTIC: 'hi-IN-MadhurNeural',
+                SpeakerVoice.NEUTRAL: 'hi-IN-SwaraNeural'
             }
         }
-        lang_code = 'bn' if lang_code.startswith('bn') else voices.get(lang_code, voices['en'])
-        return voices[lang_code][voice_type]
+        
+        default_lang = 'en'
+        if language not in voices:
+            if language.startswith('bn'): default_lang = 'bn'
+            
+        return voices[default_lang][speaker]
 
-    async def generate_audio(self, text: str, voice_type: VoiceType) -> Tuple[str, str]:
+    async def create_speech(self, message: str, speaker: SpeakerVoice) -> Tuple[str, str]:
         try:
-            detected_lang = await self.detect_language(text)
-            voice = self.get_voice(detected_lang, voice_type)
-            filename = f"{uuid.uuid4()}.mp3"
-            file_path = os.path.join(self.output_dir, filename)
+            language = await self.get_language(message)
+            voice = self.select_voice(language, speaker)
+            audio_path = os.path.join(self.storage, f"{uuid.uuid4()}.mp3")
             
-            tts = edge_tts.Communicate(text, voice)
-            await tts.save(file_path)
+            communicator = edge_tts.Communicate(message, voice)
+            await communicator.save(audio_path)
             
-            return file_path, detected_lang
+            return audio_path, language
+
         except Exception as e:
-            if 'file_path' in locals() and os.path.exists(file_path):
-                os.remove(file_path)
-            raise HTTPException(status_code=500, detail=f"Speech generation failed: {str(e)}")
+            if 'audio_path' in locals() and os.path.exists(audio_path):
+                os.remove(audio_path)
+            raise HTTPException(status_code=500, detail=str(e))
