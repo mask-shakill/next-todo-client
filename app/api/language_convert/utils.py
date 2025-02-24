@@ -1,6 +1,6 @@
 import os
-from typing import Tuple
 import uuid
+from typing import Tuple
 from fastapi import HTTPException
 from langdetect import detect
 import edge_tts
@@ -16,8 +16,7 @@ class SpeechGenerator:
     async def get_language(self, message: str) -> str:
         try:
             loop = asyncio.get_event_loop()
-            lang = await loop.run_in_executor(None, detect, message)
-            return lang
+            return await loop.run_in_executor(None, detect, message)
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
 
@@ -30,7 +29,7 @@ class SpeechGenerator:
                 SpeakerVoice.NEUTRAL: 'bn-IN-TanishaaNeural'
             },
             'en': {
-                SpeakerVoice.MALE: 'en-US-ChristopherNeural',
+                SpeakerVoice.MALE: 'en-US-GuyNeural',
                 SpeakerVoice.FEMALE: 'en-US-JennyNeural',
                 SpeakerVoice.ROBOTIC: 'en-US-RogerNeural',
                 SpeakerVoice.NEUTRAL: 'en-US-AriaNeural'
@@ -43,22 +42,39 @@ class SpeechGenerator:
             }
         }
         
-        default_lang = 'en'
+        if language.startswith('bn') or language == 'bn':
+            return voices['bn'][speaker]
         if language not in voices:
-            if language.startswith('bn'): default_lang = 'bn'
-            
-        return voices[default_lang][speaker]
+            return voices['en'][speaker]
+        return voices[language][speaker]
 
     async def create_speech(self, message: str, speaker: SpeakerVoice) -> Tuple[str, str]:
         try:
             language = await self.get_language(message)
             voice = self.select_voice(language, speaker)
             audio_path = os.path.join(self.storage, f"{uuid.uuid4()}.mp3")
-            
-            communicator = edge_tts.Communicate(message, voice)
-            await communicator.save(audio_path)
-            
-            return audio_path, language
+
+            try:
+                communicate = edge_tts.Communicate(message, voice)
+                await communicate.save(audio_path)
+                
+                if not os.path.exists(audio_path) or os.path.getsize(audio_path) == 0:
+                    raise Exception("Audio file generation failed")
+                
+                return audio_path, language
+            except Exception as audio_error:
+                # Try with default Bengali voice if original fails
+                if language.startswith('bn'):
+                    fallback_voice = 'bn-IN-BashkarNeural'
+                    communicate = edge_tts.Communicate(message, fallback_voice)
+                    await communicate.save(audio_path)
+                    
+                    if not os.path.exists(audio_path) or os.path.getsize(audio_path) == 0:
+                        raise Exception("Fallback audio generation failed")
+                        
+                    return audio_path, language
+                else:
+                    raise audio_error
 
         except Exception as e:
             if 'audio_path' in locals() and os.path.exists(audio_path):
