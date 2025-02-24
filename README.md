@@ -164,4 +164,9 @@ To add new languages or voices:
 
 ## License
 
-[Your License Here]
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Author
+
+Shahriar Kobir Shakil  
+GitHub: [[Your GitHub Profile URL](https://github.com/mask-shakill)]
