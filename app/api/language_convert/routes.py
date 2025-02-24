@@ -1,38 +1,34 @@
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
-from .models import TextToSpeechRequest
-from .utils import TextToSpeechUtil
-
+from .models import SpeechRequest
+from .utils import SpeechGenerator
 import os
 
 router = APIRouter()
-tts_service = TextToSpeechUtil()
+generator = SpeechGenerator()
 
-def remove_file(filepath: str):
+def remove_file(path: str):
     try:
-        if os.path.exists(filepath):
-            os.remove(filepath)
-    except Exception as error:
-        print(f"File cleanup error: {error}")
+        if os.path.exists(path):
+            os.remove(path)
+    except Exception:
+        pass
 
 @router.post("/convert")
-async def text_to_speech(request: TextToSpeechRequest, background_tasks: BackgroundTasks):
-    if not request.text.strip():
-        raise HTTPException(status_code=400, detail="Input text cannot be empty.")
+async def create_audio(data: SpeechRequest, tasks: BackgroundTasks):
+    if not data.message.strip():
+        raise HTTPException(status_code=400, detail="Empty message")
 
     try:
-        audio_path, detected_language = await tts_service.generate_speech(request.text, request.voice_type)
-        background_tasks.add_task(remove_file, audio_path)
-
+        audio_path, language = await generator.create_speech(data.message, data.speaker)
+        tasks.add_task(remove_file, audio_path)
+        
         return FileResponse(
-            path=audio_path,
+            audio_path,
             media_type="audio/mpeg",
             filename="shakil.mp3",
-            headers={
-                "Content-Disposition": "attachment; filename=output.mp3",
-                "X-Detected-Language": detected_language
-            }
+            headers={"X-Language": language}
         )
-    
-    except Exception as error:
-        raise HTTPException(status_code=500, detail=f"Speech synthesis failed: {error}")
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
