@@ -12,4 +12,4 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(router, prefix="/api/tts", tags=["speech"])
+app.include_router(router, prefix="/api/text-speech", tags=["speech"])
