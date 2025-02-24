@@ -5,45 +5,33 @@ from .utils import TextToSpeechUtil
 import os
 
 router = APIRouter()
-tts_util = TextToSpeechUtil()
+tts_service = TextToSpeechUtil()
 
-def cleanup_file(filepath: str):
-    """Background task to cleanup the file after sending."""
+def remove_file(filepath: str):
     try:
         if os.path.exists(filepath):
             os.remove(filepath)
-    except Exception as e:
-        print(f"Error cleaning up file {filepath}: {e}")
+    except Exception as error:
+        print(f"File cleanup error: {error}")
 
 @router.post("/convert")
-async def convert_text_to_speech(request: TextToSpeechRequest, background_tasks: BackgroundTasks):
-    """
-    Convert text to speech and return as downloadable file.
-    Default download filename is shakil.mp3
-    """
+async def text_to_speech(request: TextToSpeechRequest, background_tasks: BackgroundTasks):
     if not request.text.strip():
-        raise HTTPException(status_code=400, detail="Text cannot be empty")
+        raise HTTPException(status_code=400, detail="Input text cannot be empty.")
 
     try:
-        # Generate speech file
-        filepath, detected_lang = await tts_util.generate_speech(request.text, request.voice_type)
-        
-        # Add cleanup task to background tasks
-        background_tasks.add_task(cleanup_file, filepath)
-        
-        # Return file response with fixed filename shakil.mp3
+        audio_path, detected_language = await tts_service.generate_speech(request.text, request.voice_type)
+        background_tasks.add_task(remove_file, audio_path)
+
         return FileResponse(
-            filepath,
+            path=audio_path,
             media_type="audio/mpeg",
             filename="shakil.mp3",
             headers={
-                "Content-Disposition": "attachment; filename=shakil.mp3",
-                "X-Detected-Language": detected_lang
+                "Content-Disposition": "attachment; filename=output.mp3",
+                "X-Detected-Language": detected_language
             }
         )
-        
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Speech generation failed: {str(e)}"
-        )
+    
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"Speech synthesis failed: {error}")
