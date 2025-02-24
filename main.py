@@ -1,13 +1,10 @@
-# main.py
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.language_convert.routes import router as tts_router
-from app.api.language_convert.middleware import ProcessTimeMiddleware
 
 app = FastAPI(
     title="Text to Speech API",
-    description="API for converting text to natural-sounding speech with automatic language detection",
+    description="API for converting text to speech with multiple voice options",
     version="1.0.0"
 )
 
@@ -19,9 +16,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Add custom middleware
-app.add_middleware(ProcessTimeMiddleware)
 
 # Add routes
 app.include_router(tts_router, prefix="/api/tts", tags=["text-to-speech"])

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Text to Speech Converter</title>
+    <link rel="stylesheet" href="/static/css/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Text to Speech Converter</h1>
+      </header>
+
+      <main>
+        <div class="input-section">
+          <textarea
+            id="textInput"
+            rows="5"
+            placeholder="Enter your text here..."
+          ></textarea>
+
+          <div class="controls">
+            <div class="control-group">
+              <label for="voiceType">Voice Type:</label>
+              <select id="voiceType">
+                <option value="male">Male Voice</option>
+                <option value="female">Female Voice</option>
+                <option value="robotic">Robotic Voice</option>
+                <option value="neutral">Neutral Voice</option>
+              </select>
+            </div>
+
+            <div class="control-group">
+              <label for="outputType">Output Type:</label>
+              <select id="outputType">
+                <option value="play">Play Audio</option>
+                <option value="download">Download Audio</option>
+              </select>
+            </div>
+
+            <button id="convertBtn" onclick="convertText()">Convert</button>
+          </div>
+        </div>
+
+        <div class="output-section">
+          <div id="audioPlayer" class="audio-player"></div>
+          <div id="status" class="status"></div>
+        </div>
+      </main>
+
+      <footer>
+        <p>Supported languages: English, Bengali, Hindi, Spanish and more</p>
+      </footer>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+  </body>
+</html>

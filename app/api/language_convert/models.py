@@ -1,14 +1,12 @@
-# app/api/language_convert/models.py
+from pydantic import BaseModel, Field # type: ignore
+from enum import Enum
 
-from pydantic import BaseModel, Field
-from typing import Optional
+class VoiceType(str, Enum):
+    MALE = "male"
+    FEMALE = "female"
+    ROBOTIC = "robotic"
+    NEUTRAL = "neutral"
 
 class TextToSpeechRequest(BaseModel):
     text: str = Field(..., description="Text to convert to speech")
-    download: Optional[bool] = Field(default=False, description="Whether to download the file")
-
-class TextToSpeechResponse(BaseModel):
-    success: bool
-    message: str
-    language: str
-    file_path: Optional[str] = None
+    voice_type: VoiceType = Field(default=VoiceType.MALE, description="Type of voice to use")
